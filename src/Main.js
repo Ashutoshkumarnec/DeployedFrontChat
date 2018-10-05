@@ -3,7 +3,7 @@ import { Switch, Route } from "react-router-dom";
 import { Link, Redirect } from "react-router-dom";
 import Register from "./Register";
 import Login from "./Login";
-import App from "./App";
+import App from "./Chat";
 import Forget from "./Forget";
 import Reset from "./Reset";
 // import Chat from "./Chat";
