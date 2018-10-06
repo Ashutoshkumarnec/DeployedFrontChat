@@ -6,11 +6,15 @@ var e;
 var msg = [],
   msg1 = [];
 var tym, sendtym, backmsg;
+var key = 1,
+  keys = 0;
+var NewMsg = [];
+var SetGroupUser = [];
 class Chat extends Component {
   constructor(props) {
     super(props);
     e = this;
-    this.socket = io("https://limitless-coast-89306.herokuapp.com", {
+    this.socket = io("http://192.168.100.143:3000", {
       jsonp: false
     });
 
@@ -32,7 +36,13 @@ class Chat extends Component {
       Replied: "",
       ShowsEmoji: false,
       AllUser: [],
-      Selecteduser: ""
+      Selecteduser: "",
+      Group: false,
+      SelectedName: "",
+      AllGroupUser: [],
+      TextToShow: "",
+      showNext: false,
+      GroupName: ""
     };
     this.socket.on("Server-Send-Text", function(data) {
       e.setState({ Sevtext: data });
@@ -72,19 +82,13 @@ class Chat extends Component {
     this.socket.on("Closeit", function(user) {
       e.setState({ typingstatus: 0 });
     });
-    this.socket.on("Message", function(message) {
-      // alert("Message from User " + message);
-      // console.log("Message", message);
-      // e.setState({ InCommingMsg: message });
+    this.socket.on("Message", async function(message) {
       if (e.state.UserName !== "") {
         if (message.Messagefrom !== e.state.UserName) {
           alert(message.Messagefrom + " : " + message.Message);
-          e.setState({
-            MessageUser: message.Messagefrom,
-            Replied: message.Message
-          });
+          await e.AssignMsg(message);
         } else {
-          // msg.push(message);
+          await e.AssignMsg(message);
           var d = new Date();
           var dat = d.toDateString();
           var tim = d.toLocaleTimeString();
@@ -99,6 +103,7 @@ class Chat extends Component {
           console.log("Message from :", message.Messagefrom);
         }
       } else {
+        await e.AssignMsg(message);
         e.Select(message.Messagefrom);
         // msg.push(message);
         var d = new Date();
@@ -125,6 +130,39 @@ class Chat extends Component {
     //   e.ErrorLogout();
     // });
   }
+  AssignMsg = async message => {
+    if (NewMsg.length !== 0) {
+      console.log("Inside forloop");
+      for (var i = 0; i < NewMsg.length; i++) {
+        if (NewMsg[i].MessageFrom === message.Messagefrom) {
+          console.log("Inside forloop1", NewMsg);
+          NewMsg.splice(i, 1);
+          key = 0;
+          console.log("Inside forloop2");
+          break;
+        } else {
+          key = 0;
+        }
+      }
+    } else {
+      NewMsg.push({
+        MessageFrom: message.Messagefrom,
+        Message: message.Message
+      });
+      e.setState({ Status: 1 });
+      key = 1;
+      console.log("NewMsg", NewMsg);
+    }
+    if (key !== 1) {
+      NewMsg.push({
+        MessageFrom: message.Messagefrom,
+        Message: message.Message
+      });
+      key = 0;
+      console.log("Inside if");
+      e.setState({ Status: 1 });
+    }
+  };
   StorageChange = async event => {
     if (event.newValue === null) {
       await this.Logout();
@@ -139,9 +177,9 @@ class Chat extends Component {
     var username = await localStorage.getItem("email");
 
     if (username === null) {
-      this.props.history.push("/Go-For-Chat/Login");
+      this.props.history.push("/Login");
     } else {
-      fetch("https://limitless-coast-89306.herokuapp.com/CheckLogin", {
+      fetch("http://192.168.100.143:3000/CheckLogin", {
         headers: {
           Accept: "application/json",
           "Content-type": "application/json"
@@ -156,7 +194,7 @@ class Chat extends Component {
           if (resp.data === "Allowed") {
             this.setState({ OwnUsername: "" });
 
-            fetch("https://limitless-coast-89306.herokuapp.com/SignUps", {
+            fetch("http://192.168.100.143:3000/SignUps", {
               headers: {
                 Accept: "application/json",
                 "Content-type": "application/json"
@@ -214,7 +252,7 @@ class Chat extends Component {
     }
   };
   UpdateUser = () => {
-    fetch("https://limitless-coast-89306.herokuapp.com/UpdateAllUser", {
+    fetch("http://192.168.100.143:3000/UpdateAllUser", {
       headers: {
         Accept: "application/json",
         "Content-type": "application/json"
@@ -240,6 +278,9 @@ class Chat extends Component {
         // }
       });
   };
+  setGroupText = e => {
+    this.setState({ GroupName: e.target.value });
+  };
   ShowEmoji = () => {
     this.setState({ ShowsEmoji: !this.state.ShowsEmoji });
   };
@@ -247,11 +288,11 @@ class Chat extends Component {
     var email = await localStorage.removeItem("email");
     await localStorage.removeItem("username");
     e.setState({ Status: 1 });
-    this.props.history.push("/Login");
+    this.props.history.push("/Go-For-Chat/Login");
   };
   Logout = async () => {
     var email = await localStorage.getItem("email");
-    fetch("https://limitless-coast-89306.herokuapp.com/ChangeStatus", {
+    fetch("http://192.168.100.143:3000/ChangeStatus", {
       headers: {
         Accept: "application/json",
         "Content-type": "application/json"
@@ -269,13 +310,13 @@ class Chat extends Component {
         console.log("Status changed");
       });
 
-    this.socket.emit("Logout", email);
+    await this.socket.emit("Logout", email);
     var email = await localStorage.removeItem("email");
     await localStorage.removeItem("username");
     this.props.history.push("/Login");
   };
-  Send = () => {
-    this.socket.emit("new-user", this.state.OwnUsername);
+  Send = async () => {
+    await this.socket.emit("new-user", this.state.OwnUsername);
     // alert("Sending name" + this.state.UserName);
   };
   Deni = () => {
@@ -306,7 +347,7 @@ class Chat extends Component {
             Time: sendtym
           };
           this.state.AllMsg.push(allmsg);
-          fetch("https://limitless-coast-89306.herokuapp.com/SaveMessages", {
+          fetch("http://192.168.100.143:3000/SaveMessages", {
             headers: {
               Accept: "application/json",
               "Content-type": "application/json"
@@ -341,6 +382,25 @@ class Chat extends Component {
       this.setState({ DropDown: false });
     }
   };
+  AddAll = () => {
+    if (this.state.showNext !== true && SetGroupUser.length !== 0) {
+      console.log("All added ", SetGroupUser);
+      this.setState({ showNext: true });
+    } else if (SetGroupUser.length === 0) {
+      this.setState({ showNext: false, Group: false });
+    } else {
+      if (this.state.GroupName !== "") {
+        this.setState({ showNext: false, Group: false });
+        this.socket.emit("NewGroup");
+        console.log("Goup Details", SetGroupUser, "Text", this.state.GroupName);
+      } else {
+        var confirm = window.confirm("You have not Entered GroupName");
+        if (confirm === false) {
+          this.setState({ showNext: false, Group: false });
+        }
+      }
+    }
+  };
   show = () => {
     this.setState({ DropDown: !this.state.DropDown });
   };
@@ -348,12 +408,13 @@ class Chat extends Component {
     alert("Write Down Code");
   };
   Select = async data => {
+    this.setState({ ChangeColor: "black", SelectedName: data });
     if (data === this.state.MessageUser) {
       this.setState({ MessageUser: "", Replied: "" });
     }
     if (data !== this.state.UserName) {
       await this.setState({ UserName: data, AllMsg: [], Selecteduser: data });
-      fetch("https://limitless-coast-89306.herokuapp.com/Find", {
+      fetch("http://192.168.100.143:3000/Find", {
         headers: {
           Accept: "application/json",
           "Content-type": "application/json"
@@ -391,6 +452,54 @@ class Chat extends Component {
     }
 
     console.log("MyID in DataBase", this.state.myid);
+  };
+  SetUsers = value => {
+    if (SetGroupUser.length !== 0) {
+      for (var i = 0; i < SetGroupUser.length; i++) {
+        if (SetGroupUser[i] === value) {
+          delete SetGroupUser[i];
+          keys = 1;
+          break;
+        } else {
+          keys = 0;
+        }
+      }
+      if (keys === 0) {
+        SetGroupUser.push(value);
+        this.setState({ TextToShow: "Added" });
+      } else {
+        this.setState({ TextToShow: "Remove" });
+      }
+    } else {
+      SetGroupUser.push(value);
+      this.setState({ TextToShow: "Added" });
+    }
+
+    this.setState({ Status: 1 });
+  };
+  DisableGroup = () => {
+    this.setState({ Group: !false });
+  };
+  AddGroup = async () => {
+    this.setState({ Group: !this.state.Group, showNext: false, GroupName: "" });
+    SetGroupUser = [];
+    fetch("http://192.168.100.143:3000/GroupAdd", {
+      headers: {
+        Accept: "application/json",
+        "Content-type": "application/json"
+      },
+      method: "POST",
+      body: JSON.stringify({
+        email: await localStorage.getItem("email")
+      })
+    })
+      .then(response => {
+        return response.json();
+      })
+      .then(resp => {
+        this.setState({ AllGroupUser: resp.data });
+        console.log("All user ", resp.data);
+      });
   };
   settext = e => {
     this.setState({ text: e.target.value });
@@ -436,6 +545,8 @@ class Chat extends Component {
           rel="stylesheet"
           type="text/css"
         />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js" />
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" />
         <link
           rel="stylesheet prefetch"
           href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css"
@@ -464,7 +575,7 @@ class Chat extends Component {
       Website: http://emilcarlsson.se/
       
       */}
-        <div id="all" onClick={this.DropDown1}>
+        <div id="all">
           <div id="frame">
             <div id="sidepanel">
               <div id="profile">
@@ -616,16 +727,19 @@ class Chat extends Component {
                           <img src="users.png" onMouseOver={data.email} />
                           <div className="meta">
                             <p className="name">{data.email}</p>
-                            {this.state.MessageUser === data.email ? (
-                              <p
-                                className="preview"
-                                style={{ color: "orange" }}
-                              >
-                                {" "}
-                                {this.state.Replied}
-                              </p>
-                            ) : (
-                              ""
+                            {NewMsg.map(
+                              (data1, key) =>
+                                data1.MessageFrom === data.email ? (
+                                  <p
+                                    className="preview"
+                                    style={{ color: "black" }}
+                                  >
+                                    {""}
+                                    {data1.Message}
+                                  </p>
+                                ) : (
+                                  ""
+                                )
                             )}
                           </div>
                         </div>
@@ -779,9 +893,13 @@ class Chat extends Component {
                   <i className="fa fa-sign-out" aria-hidden="true" />{" "}
                   <span>Logout</span>
                 </button>
-                <button id="settings">
-                  <i className="fa fa-cog fa-fw" aria-hidden="true" />{" "}
-                  <span>Profile</span>
+                <button id="settings" onClick={this.AddGroup}>
+                  <i
+                    class="fa fa-group"
+                    aria-hidden="true"
+                    style={{ color: "red" }}
+                  />{" "}
+                  <span>Create Group</span>
                 </button>
               </div>
             </div>
@@ -807,6 +925,94 @@ class Chat extends Component {
               <i className="fa fa-twitter" aria-hidden="true" />
               <i className="fa fa-instagram" aria-hidden="true" />*/}
                   </div>
+                </div>
+              ) : (
+                ""
+              )}
+              {this.state.Group === true ? (
+                <div
+                  style={{
+                    width: 300,
+                    height: 400,
+                    opacity: 0.7,
+                    position: "absolute",
+                    zIndex: 5,
+                    marginTop: 60,
+                    marginRight: 40,
+                    backgroundColor: "white",
+                    border: "solid",
+                    overflowY: "scroll",
+                    borderWidth: 1,
+                    borderColor: "orange",
+                    borderRadius: 10
+                  }}
+                >
+                  {this.state.showNext !== true ? (
+                    <div style={{ overflowY: "scroll", overflowX: "hidden" }}>
+                      {this.state.AllGroupUser.map((data, key) => (
+                        <div style={{ flexDirection: "row" }}>
+                          <div
+                            style={{
+                              borderWidth: 1,
+                              height: 20,
+                              marginTop: 20,
+                              marginLeft: 10,
+                              display: "flex"
+                            }}
+                          >
+                            <a
+                              href="#"
+                              onClick={() => this.SetUsers(data.email)}
+                            >
+                              {data.email}
+                            </a>
+                          </div>
+                          <div>
+                            <p
+                              style={{
+                                marginLeft: 10,
+                                display: "flex",
+                                color: "green"
+                              }}
+                            >
+                              {SetGroupUser.map(
+                                (data1, key) =>
+                                  data1 === data.email
+                                    ? this.state.TextToShow
+                                    : ""
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        flexDirection: "row",
+                        marginTop: 40,
+                        marginLeft: 30
+                      }}
+                    >
+                      <img
+                        src="groupusers.png"
+                        style={{ marginTop: 20, width: 30 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Enter your Group Name"
+                        style={{ marginLeft: 20 }}
+                        onChange={this.setGroupText}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    style={{ marginTop: 40, marginLeft: 50 }}
+                    onClick={this.AddAll}
+                  >
+                    Done
+                  </button>
                 </div>
               ) : (
                 ""
@@ -896,6 +1102,7 @@ class Chat extends Component {
                       type="text"
                       placeholder="Write your message..."
                       onChange={this.settext}
+                      onBlur={this.Deni}
                       name="text"
                       ref="texts"
                     />
