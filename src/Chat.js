@@ -14,7 +14,7 @@ class Chat extends Component {
   constructor(props) {
     super(props);
     e = this;
-    this.socket = io("http://192.168.100.143:3000", {
+    this.socket = io("https://limitless-coast-89306.herokuapp.com", {
       jsonp: false
     });
 
@@ -179,7 +179,7 @@ class Chat extends Component {
     if (username === null) {
       this.props.history.push("/Login");
     } else {
-      fetch("http://192.168.100.143:3000/CheckLogin", {
+      fetch("https://limitless-coast-89306.herokuapp.com/CheckLogin", {
         headers: {
           Accept: "application/json",
           "Content-type": "application/json"
@@ -194,7 +194,7 @@ class Chat extends Component {
           if (resp.data === "Allowed") {
             this.setState({ OwnUsername: "" });
 
-            fetch("http://192.168.100.143:3000/SignUps", {
+            fetch("https://limitless-coast-89306.herokuapp.com/SignUps", {
               headers: {
                 Accept: "application/json",
                 "Content-type": "application/json"
@@ -252,7 +252,7 @@ class Chat extends Component {
     }
   };
   UpdateUser = () => {
-    fetch("http://192.168.100.143:3000/UpdateAllUser", {
+    fetch("https://limitless-coast-89306.herokuapp.com/UpdateAllUser", {
       headers: {
         Accept: "application/json",
         "Content-type": "application/json"
@@ -288,11 +288,11 @@ class Chat extends Component {
     var email = await localStorage.removeItem("email");
     await localStorage.removeItem("username");
     e.setState({ Status: 1 });
-    this.props.history.push("/Go-For-Chat/Login");
+    this.props.history.push("/Login");
   };
   Logout = async () => {
     var email = await localStorage.getItem("email");
-    fetch("http://192.168.100.143:3000/ChangeStatus", {
+    fetch("https://limitless-coast-89306.herokuapp.com/ChangeStatus", {
       headers: {
         Accept: "application/json",
         "Content-type": "application/json"
@@ -347,7 +347,7 @@ class Chat extends Component {
             Time: sendtym
           };
           this.state.AllMsg.push(allmsg);
-          fetch("http://192.168.100.143:3000/SaveMessages", {
+          fetch("https://limitless-coast-89306.herokuapp.com/SaveMessages", {
             headers: {
               Accept: "application/json",
               "Content-type": "application/json"
@@ -414,7 +414,7 @@ class Chat extends Component {
     }
     if (data !== this.state.UserName) {
       await this.setState({ UserName: data, AllMsg: [], Selecteduser: data });
-      fetch("http://192.168.100.143:3000/Find", {
+      fetch("https://limitless-coast-89306.herokuapp.com/Find", {
         headers: {
           Accept: "application/json",
           "Content-type": "application/json"
@@ -483,7 +483,7 @@ class Chat extends Component {
   AddGroup = async () => {
     this.setState({ Group: !this.state.Group, showNext: false, GroupName: "" });
     SetGroupUser = [];
-    fetch("http://192.168.100.143:3000/GroupAdd", {
+    fetch("https://limitless-coast-89306.herokuapp.com/GroupAdd", {
       headers: {
         Accept: "application/json",
         "Content-type": "application/json"

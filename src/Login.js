@@ -17,7 +17,7 @@ class Login extends Component {
   componentDidMount() {
     var email = localStorage.getItem("email");
     if (email !== null) {
-      this.props.history.push("/Go-For-Chat/App");
+      this.props.history.push("/App");
     } else {
       let query = new URLSearchParams(window.location.search);
       let id = query.get("id");
