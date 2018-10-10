@@ -10,6 +10,21 @@ var key = 1,
   keys = 0;
 var NewMsg = [];
 var SetGroupUser = [];
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+];
+const WeekNames = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
 class Chat extends Component {
   constructor(props) {
     super(props);
@@ -34,7 +49,7 @@ class Chat extends Component {
       typing: 0,
       MessageUser: "",
       Replied: "",
-      ShowsEmoji: false,
+      GroupUser: [],
       AllUser: [],
       Selecteduser: "",
       Group: false,
@@ -42,7 +57,11 @@ class Chat extends Component {
       AllGroupUser: [],
       TextToShow: "",
       showNext: false,
-      GroupName: ""
+      GroupName: "",
+      GroupUser: [],
+      GroupClient: false,
+      Room: "",
+      GroupNamesIntialised: ""
     };
     this.socket.on("Server-Send-Text", function(data) {
       e.setState({ Sevtext: data });
@@ -64,6 +83,9 @@ class Chat extends Component {
       localStorage.removeItem("username");
       e.props.history.push("/Login");
     });
+    this.socket.on("NewGroupJoined", function(data) {
+      e.GroupDetails123();
+    });
     this.socket.on("New-Message", function(data) {
       // e.setState({ NewMsg: data });
 
@@ -82,6 +104,36 @@ class Chat extends Component {
     this.socket.on("Closeit", function(user) {
       e.setState({ typingstatus: 0 });
     });
+    this.socket.on("GroupMessage", async function(message) {
+      if (e.state.UserName !== "") {
+        if (message.Messagefrom !== e.state.UserName) {
+          alert(message.Messagefrom + " : " + message.Message);
+          await e.AssignMsg(message);
+        } else {
+          await e.AssignMsg(message);
+
+          tym = e.AssignTime();
+          var allmsg = {
+            Messagefrom: message.Messagefrom,
+            Messages: message.Message,
+            Time: tym
+          };
+          e.state.AllMsg.push(allmsg);
+          e.setState({ Status: 1, typingstatus: 0 });
+          console.log("Message from :", message.Messagefrom);
+        }
+      } else {
+        console.log("GroupName", message.Messagefrom);
+        console.log("GroupRoom", message.Room);
+        await e.AssignMsg(message);
+        e.Select1(message.Room, message.Messagefrom);
+        console.log("Username:", message.MessageBy);
+
+        tym = e.AssignTime();
+
+        console.log("Message from :", message.Messagefrom);
+      }
+    });
     this.socket.on("Message", async function(message) {
       if (e.state.UserName !== "") {
         if (message.Messagefrom !== e.state.UserName) {
@@ -89,10 +141,18 @@ class Chat extends Component {
           await e.AssignMsg(message);
         } else {
           await e.AssignMsg(message);
-          var d = new Date();
-          var dat = d.toDateString();
-          var tim = d.toLocaleTimeString();
-          tym = dat + " " + tim;
+          // var d = new Date();
+          // // var dat = d.toDateString();
+          // // var tim = d.toLocaleTimeString();
+          // var hours = d.getHours();
+          // var minutes = d.getMinutes();
+          // var sec = d.getSeconds();
+          // var ampm = hours >= 12 ? "pm" : "am";
+          // hours = hours % 12;
+          // hours = hours ? hours : 12;
+          // minutes = minutes < 10 ? "0" + minutes : minutes;
+          // Seconds = sec < 10 ? "0" + sec : sec;
+          tym = e.AssignTime();
           var allmsg = {
             Messagefrom: message.Messagefrom,
             Messages: message.Message,
@@ -105,11 +165,12 @@ class Chat extends Component {
       } else {
         await e.AssignMsg(message);
         e.Select(message.Messagefrom);
+        e.setState({ GroupClient: false });
         // msg.push(message);
-        var d = new Date();
-        var dat = d.toDateString();
-        var tim = d.toLocaleTimeString();
-        tym = dat + " " + tim;
+        // var d = new Date();
+        // var dat = d.toDateString();
+        // var tim = d.toLocaleTimeString();
+        tym = e.AssignTime();
         // var allmsg = {
         //   Messagefrom: message.Messagefrom,
         //   Messages: message.Message,
@@ -130,7 +191,39 @@ class Chat extends Component {
     //   e.ErrorLogout();
     // });
   }
-  AssignMsg = async message => {
+  AssignTime = () => {
+    var d = new Date();
+    var hours = d.getHours();
+    var minutes = d.getMinutes();
+    var sec = d.getSeconds();
+    var dat = d.getDate();
+    dat = dat < 10 ? "0" + dat : dat;
+    var ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    var Seconds = sec < 10 ? "0" + sec : sec;
+    var month = monthNames[d.getMonth()];
+    var week = WeekNames[d.getDay()];
+    var tyme =
+      week +
+      " " +
+      month +
+      " " +
+      dat +
+      " " +
+      d.getFullYear() +
+      " " +
+      hours +
+      ":" +
+      minutes +
+      ":" +
+      Seconds +
+      " " +
+      ampm;
+    return tyme;
+  };
+  AssignMsg = message => {
     if (NewMsg.length !== 0) {
       console.log("Inside forloop");
       for (var i = 0; i < NewMsg.length; i++) {
@@ -172,6 +265,88 @@ class Chat extends Component {
   componentWillUnmount() {
     this.socket.emit("unmounting", localStorage.getItem("email"));
   }
+  GroupDetails123 = async () => {
+    this.setState({ GroupUser: [] });
+    console.log("Local", localStorage.getItem("email"));
+    await fetch(
+      "https://limitless-coast-89306.herokuapp.com/SendGroupDetails",
+      {
+        headers: {
+          Accept: "application/json",
+          "Content-type": "application/json"
+        },
+        method: "POST",
+        body: JSON.stringify({
+          email: await localStorage.getItem("email")
+        })
+      }
+    )
+      .then(response => {
+        return response.json();
+      })
+      .then(resp => {
+        console.log("All user", resp.data);
+        this.setState({ GroupUser: resp.data });
+
+        // } else {
+        //   alert("You are already Logged in");
+        //   this.ErrorLogout();
+        // }
+      });
+  };
+  Select1 = async (data, data1) => {
+    await this.setState({
+      Selecteduser: data,
+      GroupClient: true,
+      Room: data
+    });
+    // if (data === this.state.MessageUser) {
+    //   this.setState({ MessageUser: "", Replied: "" });
+    // }
+    if (data1 !== this.state.UserName) {
+      await this.setState({
+        UserName: data1,
+        AllMsg: [],
+        Selecteduser: data
+      });
+      fetch("https://limitless-coast-89306.herokuapp.com/FindGroupMessage", {
+        headers: {
+          Accept: "application/json",
+          "Content-type": "application/json"
+        },
+        method: "POST",
+        body: JSON.stringify({
+          Room: data
+        })
+      })
+        .then(response => {
+          return response.json();
+        })
+        .then(resp => {
+          // this.setState({ AllMsg: resp.data });
+          console.log("Record Details", resp.data);
+          if (resp.data !== "No Record") {
+            // msg.push(resp.data);
+            // console.log("All Message", resp.data.Message[1]);
+            for (var i = 0; i < resp.data[0].Message.length; i++) {
+              this.state.AllMsg.push(resp.data[0].Message[i]);
+              // console.log("Messages", resp.data.Message[i]);
+            }
+            console.log("After all message push", this.state.AllMsg);
+            // resp.data.Message[0].map(data =>
+            //   console.log("After all message push", data.Messages)
+            // );
+            // this.setState({ AllMsg: resp.data.Message });
+            this.setState({ Status: 1 });
+            // this.state.AllMsg.map(data =>
+            //   console.log("After state set", data.Messages)
+            // );
+          } else {
+            this.setState({ AllMsg: [] });
+          }
+        });
+    }
+  };
   componentDidMount = async () => {
     window.addEventListener("storage", this.StorageChange);
     var username = await localStorage.getItem("email");
@@ -209,11 +384,40 @@ class Chat extends Component {
               })
               .then(resp => {
                 console.log("All user", resp.alluser);
-                this.setState({ myid: resp.data, AllUser: resp.alluser });
-
+                this.setState({
+                  myid: resp.data,
+                  AllUser: resp.alluser
+                });
+                // console.log("All Group User", resp.AllGroupUser);
                 // if (resp.data === "offline") {
                 this.setState({ OwnUsername: username });
                 this.Send();
+                // } else {
+                //   alert("You are already Logged in");
+                //   this.ErrorLogout();
+                // }
+              });
+            fetch(
+              "https://limitless-coast-89306.herokuapp.com/SendGroupDetails",
+              {
+                headers: {
+                  Accept: "application/json",
+                  "Content-type": "application/json"
+                },
+                method: "POST",
+                body: JSON.stringify({
+                  email: localStorage.getItem("email")
+                })
+              }
+            )
+              .then(response => {
+                return response.json();
+              })
+              .then(resp => {
+                console.log("All user", resp.alluser);
+                this.setState({ GroupUser: resp.data });
+                console.log("GroupUser", this.state.GroupUser);
+                this.socket.emit("NewGroup", this.state.GroupUser);
                 // } else {
                 //   alert("You are already Logged in");
                 //   this.ErrorLogout();
@@ -336,10 +540,10 @@ class Chat extends Component {
           //   Messagefrom: this.state.OwnUsername,
           //   Message: this.state.text
           // });
-          var d = new Date();
-          var dat = d.toDateString();
-          var tim = d.toLocaleTimeString();
-          sendtym = dat + " " + tim;
+          // var d = new Date();
+          // var dat = d.toDateString();
+          // var tim = d.toLocaleTimeString();
+          sendtym = this.AssignTime();
           // sendtym = d.toLocaleString(d);
           var allmsg = {
             Messagefrom: this.state.OwnUsername,
@@ -347,30 +551,68 @@ class Chat extends Component {
             Time: sendtym
           };
           this.state.AllMsg.push(allmsg);
-          fetch("https://limitless-coast-89306.herokuapp.com/SaveMessages", {
-            headers: {
-              Accept: "application/json",
-              "Content-type": "application/json"
-            },
-            method: "POST",
-            body: JSON.stringify({
-              myid: this.state.myid,
-              OwnUsername: this.state.OwnUsername,
-              Username: this.state.UserName,
-              Message: this.state.text,
-              Time: sendtym
+          if (this.state.GroupClient !== true) {
+            fetch("https://limitless-coast-89306.herokuapp.com/SaveMessages", {
+              headers: {
+                Accept: "application/json",
+                "Content-type": "application/json"
+              },
+              method: "POST",
+              body: JSON.stringify({
+                myid: this.state.myid,
+                OwnUsername: this.state.OwnUsername,
+                Username: this.state.UserName,
+                Message: this.state.text,
+                Time: sendtym
+              })
             })
-          })
-            .then(response => {
-              return response.json();
-            })
-            .then(resp => {
-              // msg = null;
-              msg.push(resp.data);
-            });
+              .then(response => {
+                return response.json();
+              })
+              .then(resp => {
+                // msg = null;
+                msg.push(resp.data);
+              });
+            this.socket.emit(
+              "newMessage",
+              this.state.text,
+              this.state.UserName
+            );
+          } else {
+            fetch(
+              "https://limitless-coast-89306.herokuapp.com/SaveGroupMessages",
+              {
+                headers: {
+                  Accept: "application/json",
+                  "Content-type": "application/json"
+                },
+                method: "POST",
+                body: JSON.stringify({
+                  OwnUsername: this.state.OwnUsername,
+                  Room: this.state.Room,
+                  Message: this.state.text,
+                  Time: sendtym
+                })
+              }
+            )
+              .then(response => {
+                return response.json();
+              })
+              .then(resp => {
+                // msg = null;
+                msg.push(resp.data);
+              });
+            this.socket.emit(
+              "NewGroupMessage",
+              this.state.text,
+              this.state.UserName,
+              this.state.Room,
+              this.state.OwnUsername
+            );
+          }
           this.setState({ Status: 1 });
           this.refs.texts.value = "";
-          this.socket.emit("newMessage", this.state.text, this.state.UserName);
+
           e.target.value = "";
           this.setState({ text: "" });
         }
@@ -382,7 +624,7 @@ class Chat extends Component {
       this.setState({ DropDown: false });
     }
   };
-  AddAll = () => {
+  AddAll = async () => {
     if (this.state.showNext !== true && SetGroupUser.length !== 0) {
       console.log("All added ", SetGroupUser);
       this.setState({ showNext: true });
@@ -391,8 +633,32 @@ class Chat extends Component {
     } else {
       if (this.state.GroupName !== "") {
         this.setState({ showNext: false, Group: false });
-        this.socket.emit("NewGroup");
+        var room = Math.floor(Math.random() * 10000000000000000000);
+
+        await SetGroupUser.push(localStorage.getItem("email"));
+        this.socket.emit("CreatedGroup", SetGroupUser, room);
         console.log("Goup Details", SetGroupUser, "Text", this.state.GroupName);
+        fetch("https://limitless-coast-89306.herokuapp.com/AddGroupDetails", {
+          headers: {
+            Accept: "application/json",
+            "Content-type": "application/json"
+          },
+          method: "POST",
+          body: JSON.stringify({
+            GoupUser: SetGroupUser,
+            GroupName: this.state.GroupName,
+            Admin: localStorage.getItem("email"),
+            GroupRoom: room
+          })
+        })
+          .then(response => {
+            return response.json();
+          })
+          .then(resp => {
+            console.log("data Saved", resp.data);
+            SetGroupUser = [];
+            this.setState({ GroupUser: resp.data });
+          });
       } else {
         var confirm = window.confirm("You have not Entered GroupName");
         if (confirm === false) {
@@ -408,7 +674,11 @@ class Chat extends Component {
     alert("Write Down Code");
   };
   Select = async data => {
-    this.setState({ ChangeColor: "black", SelectedName: data });
+    this.setState({
+      ChangeColor: "black",
+      SelectedName: data,
+      GroupClient: false
+    });
     if (data === this.state.MessageUser) {
       this.setState({ MessageUser: "", Replied: "" });
     }
@@ -453,11 +723,12 @@ class Chat extends Component {
 
     console.log("MyID in DataBase", this.state.myid);
   };
-  SetUsers = value => {
+  SetUsers = async value => {
     if (SetGroupUser.length !== 0) {
       for (var i = 0; i < SetGroupUser.length; i++) {
         if (SetGroupUser[i] === value) {
-          delete SetGroupUser[i];
+          await SetGroupUser.splice(i, 1);
+          console.log("All user inside loop", SetGroupUser.length);
           keys = 1;
           break;
         } else {
@@ -468,6 +739,7 @@ class Chat extends Component {
         SetGroupUser.push(value);
         this.setState({ TextToShow: "Added" });
       } else {
+        console.log("All user inside else", SetGroupUser.length);
         this.setState({ TextToShow: "Remove" });
       }
     } else {
@@ -510,18 +782,18 @@ class Chat extends Component {
   render() {
     return (
       <div>
-        <link
+        {/*<link
           href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
           rel="stylesheet"
           id="bootstrap-css"
-        />
+        />*/}
         <link rel="stylesheet" href="style.css" />
         {/*---- Include the above in your HEAD tag --------*/}
-        <link
+        {/*<link
           href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"
           rel="stylesheet"
           id="bootstrap-css"
-        />
+        />*/}
         {/*---- Include the above in your HEAD tag --------*/}
         <meta charSet="UTF-8" />
         <meta name="robots" content="noindex" />
@@ -749,6 +1021,31 @@ class Chat extends Component {
                   ) : (
                     <p />
                   )}
+                  {this.state.GroupUser.map((data, key) => (
+                    <li
+                      className={
+                        this.state.Selecteduser === data.GroupRoom
+                          ? "contact active"
+                          : "contact"
+                      }
+                      onClick={() =>
+                        this.Select1(data.GroupRoom, data.GroupName)
+                      }
+                    >
+                      <div className="wrap">
+                        <span className="contact-status busy" />
+                        <img src="groupusers.png" alt style={{ width: 30 }} />
+                        <div className="meta">
+                          <p className="name">{data.GroupName}</p>
+                          {/*<p className="preview">
+                            Wrong. You take the gun, or you pull out a bigger
+                            one. Or, you call their bluff. Or, you do any one of
+                            a hundred and forty six other things.
+                  </p>*/}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
                   {/*
                   <li className="contact active">
                     <div className="wrap">
@@ -1026,22 +1323,32 @@ class Chat extends Component {
                         <div>
                           <li className="sent">
                             <img src="users.png" alt />
-                            <p>{data.Messages}</p>
+                            <p>
+                              {data.Messages}
+                              <br />
+                              <br />
+                              {data.Time}
+                            </p>
                           </li>
-                          <li className="sent">
+                          {/*<li className="sent">
                             {" "}
-                            <p>{data.Time}</p>
-                          </li>
+                           
+                      </li>*/}
                         </div>
                       ) : (
                         <div>
                           <li className="replies">
                             <img src="users.png" alt />
-                            <p>{data.Messages}</p>
+                            <p>
+                              {data.Messages}
+                              <br />
+                              <br />
+                              {data.Time}
+                            </p>
                           </li>
-                          <li className="replies">
-                            <p>{data.Time}</p>
-                          </li>
+                          {/*<li className="replies">
+                            <p />
+                      </li>*/}
                         </div>
                       )
                   )}
