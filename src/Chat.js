@@ -592,7 +592,7 @@ class Chat extends Component {
           // await this.scrollToBottom();
           if (this.state.GroupClient !== true) {
             fetch(
-              "http://https://limitless-coast-89306.herokuapp.com/SaveMessages",
+              "https://https://limitless-coast-89306.herokuapp.com/SaveMessages",
               {
                 headers: {
                   Accept: "application/json",
