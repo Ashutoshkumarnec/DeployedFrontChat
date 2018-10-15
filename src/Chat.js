@@ -278,16 +278,19 @@ class Chat extends Component {
   GroupDetails123 = async () => {
     this.setState({ GroupUser: [] });
     console.log("Local", localStorage.getItem("email"));
-    fetch("https://limitless-coast-89306.herokuapp.com/SendGroupDetails", {
-      headers: {
-        Accept: "application/json",
-        "Content-type": "application/json"
-      },
-      method: "POST",
-      body: JSON.stringify({
-        email: await localStorage.getItem("email")
-      })
-    })
+    await fetch(
+      "https://limitless-coast-89306.herokuapp.com/SendGroupDetails",
+      {
+        headers: {
+          Accept: "application/json",
+          "Content-type": "application/json"
+        },
+        method: "POST",
+        body: JSON.stringify({
+          email: await localStorage.getItem("email")
+        })
+      }
+    )
       .then(response => {
         return response.json();
       })
@@ -591,23 +594,20 @@ class Chat extends Component {
           this.state.AllMsg.push(allmsg);
           // await this.scrollToBottom();
           if (this.state.GroupClient !== true) {
-            fetch(
-              "https://https://limitless-coast-89306.herokuapp.com/SaveMessages",
-              {
-                headers: {
-                  Accept: "application/json",
-                  "Content-type": "application/json"
-                },
-                method: "POST",
-                body: JSON.stringify({
-                  myid: this.state.myid,
-                  OwnUsername: this.state.OwnUsername,
-                  Username: this.state.UserName,
-                  Message: this.state.text,
-                  Time: sendtym
-                })
-              }
-            )
+            fetch("https://limitless-coast-89306.herokuapp.com/SaveMessages", {
+              headers: {
+                Accept: "application/json",
+                "Content-type": "application/json"
+              },
+              method: "POST",
+              body: JSON.stringify({
+                myid: this.state.myid,
+                OwnUsername: this.state.OwnUsername,
+                Username: this.state.UserName,
+                Message: this.state.text,
+                Time: sendtym
+              })
+            })
               .then(response => {
                 return response.json();
               })
