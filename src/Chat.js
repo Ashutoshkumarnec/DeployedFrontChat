@@ -278,19 +278,16 @@ class Chat extends Component {
   GroupDetails123 = async () => {
     this.setState({ GroupUser: [] });
     console.log("Local", localStorage.getItem("email"));
-    await fetch(
-      "https://limitless-coast-89306.herokuapp.com/SendGroupDetails",
-      {
-        headers: {
-          Accept: "application/json",
-          "Content-type": "application/json"
-        },
-        method: "POST",
-        body: JSON.stringify({
-          email: await localStorage.getItem("email")
-        })
-      }
-    )
+    fetch("https://limitless-coast-89306.herokuapp.com/SendGroupDetails", {
+      headers: {
+        Accept: "application/json",
+        "Content-type": "application/json"
+      },
+      method: "POST",
+      body: JSON.stringify({
+        email: await localStorage.getItem("email")
+      })
+    })
       .then(response => {
         return response.json();
       })
